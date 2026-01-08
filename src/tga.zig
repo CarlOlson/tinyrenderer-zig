@@ -38,8 +38,12 @@ pub const Color = struct {
     r: u8,
     a: u8 = 0xFF,
 
-    const White: @This() = .{ .b = 0xFF, .g = 0xFF, .r = 0xFF };
-    const Black: @This() = .{ .b = 0, .g = 0, .r = 0 };
+    pub const Black: @This() = .{ .b = 0, .g = 0, .r = 0 };
+    pub const White: @This() = .{ .b = 255, .g = 255, .r = 255, .a = 255 };
+    pub const Green: @This() = .{ .b = 0, .g = 255, .r = 0, .a = 255 };
+    pub const Red: @This() = .{ .b = 0, .g = 0, .r = 255, .a = 255 };
+    pub const Blue: @This() = .{ .b = 255, .g = 128, .r = 64, .a = 255 };
+    pub const Yellow: @This() = .{ .b = 0, .g = 200, .r = 255, .a = 255 };
 };
 
 pub const Image = struct {
@@ -49,31 +53,6 @@ pub const Image = struct {
 
     pub fn imageSize(self: *const @This()) usize {
         return @as(usize, self.width) * self.height * 4;
-    }
-
-    pub fn allocFromFile(allocator: std.mem.Allocator, filename: []const u8) !@This() {
-        const buffer = try std.fs.cwd().readFileAlloc(allocator, filename, std.math.maxInt(usize));
-        const header = std.mem.bytesToValue(Header, buffer);
-
-        // This only implements what is necessary, assert to detect incompatible images
-        assert.equal(header.xOrigin, 0);
-        assert.equal(header.yOrigin, 0);
-        assert.equal(header.bitsPerPixel, 32);
-        assert.equal(header.imageDescriptor, 40); // top-to-bottom, 8 bit alpha
-        assert.equal(header.colorMapType, 0); // no color map
-        assert.equal(header.datatypeCode, ImageType.UncompressedTrueColor);
-
-        // Ensure file is expected size
-        assert.equal(buffer.len - Header.size, header.imageSize());
-
-        // Reuse existing buffer
-        @memmove(buffer[0 .. buffer.len - Header.size], buffer[Header.size..]);
-
-        return .{
-            .width = header.width,
-            .height = header.height,
-            .buffer = buffer,
-        };
     }
 
     pub fn saveToFile(self: *@This(), filename: []const u8) !void {
@@ -97,6 +76,8 @@ pub const Image = struct {
 
     pub fn alloc(allocator: std.mem.Allocator, width: u16, height: u16) !@This() {
         const buffer = try allocator.alloc(u8, width * height * 4);
+        @memset(buffer, 0);
+
         return .{
             .width = width,
             .height = height,
@@ -104,7 +85,44 @@ pub const Image = struct {
         };
     }
 
+    pub fn pixels(self: *@This()) []Color {
+        return @ptrCast(self.buffer);
+    }
+
     pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
         allocator.free(self.buffer);
     }
+
+    pub fn clear(self: *@This(), color: Color) void {
+        @memset(self.pixels(), color);
+    }
+
+    pub fn set(self: *@This(), x: u16, y: u16, color: Color) void {
+        self.pixels()[y * self.width + x] = color;
+    }
 };
+
+pub fn allocFromFile(allocator: std.mem.Allocator, filename: []const u8) !Image {
+    const buffer = try std.fs.cwd().readFileAlloc(allocator, filename, std.math.maxInt(usize));
+    const header = std.mem.bytesToValue(Header, buffer);
+
+    // This only implements what is necessary, assert to detect incompatible images
+    assert.equal(header.xOrigin, 0);
+    assert.equal(header.yOrigin, 0);
+    assert.equal(header.bitsPerPixel, 32);
+    assert.equal(header.imageDescriptor, 40); // top-to-bottom, 8 bit alpha
+    assert.equal(header.colorMapType, 0); // no color map
+    assert.equal(header.datatypeCode, ImageType.UncompressedTrueColor);
+
+    // Ensure file is expected size
+    assert.equal(buffer.len - Header.size, header.imageSize());
+
+    // Reuse existing buffer
+    @memmove(buffer[0 .. buffer.len - Header.size], buffer[Header.size..]);
+
+    return .{
+        .width = header.width,
+        .height = header.height,
+        .buffer = buffer,
+    };
+}

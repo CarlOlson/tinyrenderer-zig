@@ -30,4 +30,9 @@ pub fn build(b: *std.Build) void {
     const run_exe_tests = b.addRunArtifact(exe_tests);
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_exe_tests.step);
+
+    const convert_step = b.step("convert", "Convert framebuffer to png");
+    const convert_command = b.addSystemCommand(&.{ "magick", "framebuffer.tga", "framebuffer.png" });
+    convert_command.step.dependOn(&run_cmd.step);
+    convert_step.dependOn(&convert_command.step);
 }
