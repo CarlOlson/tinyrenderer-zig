@@ -97,8 +97,26 @@ pub const Image = struct {
         @memset(self.pixels(), color);
     }
 
+    // TODO track overdraw
     pub fn set(self: *@This(), x: u16, y: u16, color: Color) void {
-        self.pixels()[y * self.width + x] = color;
+        // Invert y since we save as top-to-bottom
+        self.pixels()[(self.height - y) * self.width + x] = color;
+    }
+
+    pub fn line(self: *@This(), ax: u16, ay: u16, bx: u16, by: u16, color: Color) void {
+        const step = 0.02;
+
+        const axf = @as(f32, @floatFromInt(ax));
+        const ayf = @as(f32, @floatFromInt(ay));
+        const bxf = @as(f32, @floatFromInt(bx));
+        const byf = @as(f32, @floatFromInt(by));
+
+        var t: f32 = 0;
+        while (t < 1) : (t += step) {
+            const x: u16 = @intFromFloat(@round(axf + t * (bxf - axf)));
+            const y: u16 = @intFromFloat(@round(ayf + t * (byf - ayf)));
+            self.set(x, y, color);
+        }
     }
 };
 
