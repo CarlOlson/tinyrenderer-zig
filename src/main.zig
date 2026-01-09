@@ -1,14 +1,17 @@
 const std = @import("std");
+const zbench = @import("zbench");
 const tga = @import("./tga.zig");
 const Color = tga.Color;
+
+var framebuffer: tga.Image = undefined;
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    var image = try tga.Image.alloc(allocator, 64, 64);
-    defer image.deinit(allocator);
+    framebuffer = try tga.Image.alloc(allocator, 64, 64);
+    defer framebuffer.deinit(allocator);
 
     const ax = 7;
     const ay = 3;
@@ -17,12 +20,59 @@ pub fn main() !void {
     const cx = 62;
     const cy = 53;
 
-    image.clear(Color.Black);
+    framebuffer.clear(Color.Black);
 
-    image.line(ax, ay, bx, by, Color.Blue);
-    image.line(cx, cy, bx, by, Color.Green);
-    image.line(cx, cy, ax, ay, Color.Yellow);
-    image.line(ax, ay, cx, cy, Color.Red);
+    framebuffer.line(ax, ay, bx, by, Color.Blue);
+    framebuffer.line(cx, cy, bx, by, Color.Green);
+    framebuffer.line(cx, cy, ax, ay, Color.Yellow);
+    framebuffer.line(ax, ay, cx, cy, Color.Red);
 
-    try image.saveToFile("framebuffer.tga");
+    try framebuffer.saveToFile("framebuffer.tga");
+}
+
+const LineBenchmark = struct {
+    loops: usize,
+
+    fn init(loops: usize) @This() {
+        return .{
+            .loops = loops,
+        };
+    }
+
+    pub fn run(self: *@This(), _: std.mem.Allocator) void {
+        const ax = 7;
+        const ay = 3;
+        const bx = 12;
+        const by = 37;
+        const cx = 62;
+        const cy = 53;
+
+        for (0..self.loops) |_| {
+            framebuffer.line(ax, ay, bx, by, Color.Blue);
+            framebuffer.line(cx, cy, bx, by, Color.Green);
+            framebuffer.line(cx, cy, ax, ay, Color.Yellow);
+            framebuffer.line(ax, ay, cx, cy, Color.Red);
+        }
+    }
+};
+
+test "benchmark" {
+    var buf: [1024]u8 = undefined;
+    const bw = std.debug.lockStderrWriter(&buf);
+    defer std.debug.unlockStderrWriter();
+
+    const allocator = std.testing.allocator;
+
+    var bench = zbench.Benchmark.init(allocator, .{});
+    defer bench.deinit();
+
+    framebuffer = try tga.Image.alloc(allocator, 80, 80);
+    defer framebuffer.deinit(allocator);
+    framebuffer.clear(Color.Black);
+
+    // ~9ms debug, ~170us fast
+    try bench.addParam("Line Benchmark 4k", &LineBenchmark.init(1000), .{});
+    // ~42ms fast
+    // try bench.addParam("Line Benchmark 1m", &LineBenchmark.init(250_000), .{});
+    try bench.run(bw);
 }

@@ -14,6 +14,10 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const opts = .{ .target = target, .optimize = optimize };
+    const zbench_module = b.dependency("zbench", opts).module("zbench");
+    exe.root_module.addImport("zbench", zbench_module);
+
     b.installArtifact(exe);
 
     const run_step = b.step("run", "Run the app");
@@ -30,6 +34,8 @@ pub fn build(b: *std.Build) void {
     const run_exe_tests = b.addRunArtifact(exe_tests);
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_exe_tests.step);
+
+    exe_tests.root_module.addImport("zbench", zbench_module);
 
     const convert_step = b.step("convert", "Convert framebuffer to png");
     const convert_command = b.addSystemCommand(&.{ "magick", "framebuffer.tga", "framebuffer.png" });

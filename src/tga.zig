@@ -104,18 +104,38 @@ pub const Image = struct {
     }
 
     pub fn line(self: *@This(), ax: u16, ay: u16, bx: u16, by: u16, color: Color) void {
-        const step = 0.02;
+        const steep: bool = @max(ay, by) - @min(ay, by) > @max(ax, bx) - @min(ax, bx);
 
-        const axf = @as(f32, @floatFromInt(ax));
-        const ayf = @as(f32, @floatFromInt(ay));
-        const bxf = @as(f32, @floatFromInt(bx));
-        const byf = @as(f32, @floatFromInt(by));
+        var axf = @as(f32, @floatFromInt(ax));
+        var ayf = @as(f32, @floatFromInt(ay));
+        var bxf = @as(f32, @floatFromInt(bx));
+        var byf = @as(f32, @floatFromInt(by));
 
-        var t: f32 = 0;
-        while (t < 1) : (t += step) {
-            const x: u16 = @intFromFloat(@round(axf + t * (bxf - axf)));
-            const y: u16 = @intFromFloat(@round(ayf + t * (byf - ayf)));
-            self.set(x, y, color);
+        // transpose if steep
+        if (steep) {
+            std.mem.swap(f32, &axf, &ayf);
+            std.mem.swap(f32, &bxf, &byf);
+        }
+
+        // make it left-to-right
+        if (axf > bxf) {
+            std.mem.swap(f32, &axf, &bxf);
+            std.mem.swap(f32, &ayf, &byf);
+        }
+
+        const mf = (byf - ayf) / (bxf - axf);
+
+        var x: f32 = axf;
+        var y: f32 = ayf;
+        while (x <= bxf) : (x += 1) {
+            if (steep) {
+                // de-transpose
+                self.set(@intFromFloat(@round(y)), @intFromFloat(@round(x)), color);
+            } else {
+                self.set(@intFromFloat(@round(x)), @intFromFloat(@round(y)), color);
+            }
+
+            y += mf;
         }
     }
 };
