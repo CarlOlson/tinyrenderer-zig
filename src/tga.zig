@@ -34,9 +34,9 @@ pub const ImageType = enum(u8) {
 };
 
 pub const Color = struct {
-    b: u8,
-    g: u8,
-    r: u8,
+    b: u8 = 0x00,
+    g: u8 = 0x00,
+    r: u8 = 0x00,
     a: u8 = 0xFF,
 
     pub const Black: @This() = .{ .b = 0, .g = 0, .r = 0 };
@@ -45,6 +45,22 @@ pub const Color = struct {
     pub const Red: @This() = .{ .b = 0, .g = 0, .r = 255, .a = 255 };
     pub const Blue: @This() = .{ .b = 255, .g = 128, .r = 64, .a = 255 };
     pub const Yellow: @This() = .{ .b = 0, .g = 200, .r = 255, .a = 255 };
+
+    /// Adaptation of https://stackoverflow.com/a/64090995
+    pub fn hsl(h: f32, s: f32, l: f32) @This() {
+        var color = [4]u8{ 0, 0, 0, 255 };
+        const a = s * @min(l, 1 - l);
+        for ([3]f32{ 4, 8, 0 }, 0..) |n, i| {
+            const k = @mod(n + h / 30, 12);
+            const unit = l - a * @max(@min(k - 3, 9 - k, 1), -1);
+            color[i] = @intFromFloat(@round(std.math.lerp(0, 255, unit)));
+        }
+        return std.mem.bytesToValue(@This(), &color);
+    }
+
+    // pub fn blend(a: *const @This(), b: *const @This()) @This() {}
+    // pub fn lighten(color: *const @This(), value: f32) @This() {}
+    // pub fn darken(color: *const @This(), value: f32) @This() {}
 };
 
 pub const Image = struct {
@@ -76,7 +92,7 @@ pub const Image = struct {
     }
 
     pub fn alloc(allocator: std.mem.Allocator, width: u16, height: u16) !@This() {
-        const buffer = try allocator.alloc(u8, width * height * 4);
+        const buffer = try allocator.alloc(u8, @as(usize, width) * height * 4);
         @memset(buffer, 0);
 
         return .{
@@ -101,7 +117,7 @@ pub const Image = struct {
     // TODO track overdraw
     pub fn set(self: *@This(), x: u16, y: u16, color: Color) void {
         // Invert y since we save as top-to-bottom
-        self.pixels()[(self.height - y) * self.width + x] = color;
+        self.pixels()[@as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + x] = color;
     }
 
     pub fn line(self: *@This(), ax: u16, ay: u16, bx: u16, by: u16, color: Color) void {
