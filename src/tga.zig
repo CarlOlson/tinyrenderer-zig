@@ -1,5 +1,6 @@
 const std = @import("std");
 const assert = @import("./assert.zig");
+const math = @import("./math.zig");
 
 pub const Header = packed struct {
     idLength: u8 = 0,
@@ -104,7 +105,7 @@ pub const Image = struct {
     }
 
     pub fn line(self: *@This(), ax: u16, ay: u16, bx: u16, by: u16, color: Color) void {
-        const steep: bool = @max(ay, by) - @min(ay, by) > @max(ax, bx) - @min(ax, bx);
+        const steep: bool = math.absDistance(ay, by) > math.absDistance(ax, bx);
 
         var axf = @as(f32, @floatFromInt(ax));
         var ayf = @as(f32, @floatFromInt(ay));
