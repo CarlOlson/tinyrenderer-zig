@@ -2,7 +2,7 @@ const std = @import("std");
 const zbench = @import("zbench");
 const tga = @import("./tga.zig");
 const wavefront = @import("./wavefront.zig");
-const Color = tga.Color;
+const Color = @import("./color.zig").Color;
 
 var framebuffer: tga.Image = undefined;
 
