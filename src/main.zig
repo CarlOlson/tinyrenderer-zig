@@ -4,7 +4,12 @@ const tga = @import("./tga.zig");
 const wavefront = @import("./wavefront.zig");
 const Color = @import("./color.zig").Color;
 
+const size = 512;
 var framebuffer: tga.Image = undefined;
+
+inline fn scale(n: f32) u16 {
+    return @intFromFloat(@round((n + 1) * (size - 1) / 2));
+}
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,15 +19,19 @@ pub fn main() !void {
     var obj = try wavefront.readFile("./diablo3_pose.obj", allocator);
     defer obj.deinit(allocator);
 
-    framebuffer = try tga.Image.alloc(allocator, 1024, 1024);
+    framebuffer = try tga.Image.alloc(allocator, size, size);
     defer framebuffer.deinit(allocator);
 
     framebuffer.clear(Color.Black);
 
-    for (obj.vertices.items) |v| {
-        const x: u16 = @intFromFloat(@round((v.x + 1) * (1024 - 1) / 2));
-        const y: u16 = @intFromFloat(@round((v.y + 1) * (1024 - 1) / 2));
-        framebuffer.set(x, y, Color.hsl(0, (v.z + 1) / 2, 0.5));
+    for (obj.faces.items) |f| {
+        const a = obj.vertices.items[f.x - 1];
+        const b = obj.vertices.items[f.y - 1];
+        const c = obj.vertices.items[f.z - 1];
+
+        framebuffer.line(scale(a.x), scale(a.y), scale(b.x), scale(b.y), Color.Red);
+        framebuffer.line(scale(b.x), scale(b.y), scale(c.x), scale(c.y), Color.Red);
+        framebuffer.line(scale(c.x), scale(c.y), scale(a.x), scale(a.y), Color.Red);
     }
 
     try framebuffer.saveToFile("framebuffer.tga");

@@ -57,13 +57,11 @@ pub fn float(comptime T: type, buf: []const u8) !struct { T, []const u8 } {
     }
 }
 
-const empty = [0]u8{};
-
 pub fn word(buf: []const u8) struct { []const u8, []const u8 } {
     if (std.mem.indexOfScalar(u8, buf, ' ')) |i| {
         return .{ buf[0..i], buf[i..] };
     } else {
-        return .{ buf, empty[0..] };
+        return .{ buf, &.{} };
     }
 }
 
@@ -71,7 +69,7 @@ pub fn skipTo(comptime T: type, buf: []const T, value: T) []const T {
     if (std.mem.indexOfScalar(T, buf, value)) |i| {
         return buf[i..];
     } else {
-        return empty[0..];
+        return &.{};
     }
 }
 
@@ -79,7 +77,7 @@ pub fn skip(comptime T: type, buf: []const T, value: T) []const T {
     for (buf, 0..) |x, i| {
         if (x != value) return buf[i..];
     }
-    return empty[0..];
+    return &.{};
 }
 
 pub fn eof(buf: []const u8) ParseError!void {

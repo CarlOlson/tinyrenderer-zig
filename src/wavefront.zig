@@ -9,8 +9,9 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 const math = @import("./math.zig");
+const parse = @import("./parse.zig");
 
-pub const T = struct {
+pub const Object = struct {
     vertices: ArrayList(math.Vector3),
     faces: ArrayList(math.Vector3u),
 
@@ -20,8 +21,8 @@ pub const T = struct {
     }
 };
 
-pub fn readFile(filename: []const u8, allocator: std.mem.Allocator) !T {
-    var obj = T{
+pub fn readFile(filename: []const u8, allocator: std.mem.Allocator) !Object {
+    var obj = Object{
         .vertices = .empty,
         .faces = .empty,
     };
@@ -31,15 +32,27 @@ pub fn readFile(filename: []const u8, allocator: std.mem.Allocator) !T {
 
     var lineIterator = std.mem.splitScalar(u8, file, '\n');
     while (lineIterator.next()) |line| {
-        var chunks = std.mem.splitScalar(u8, line, ' ');
-        const kind = chunks.next() orelse continue;
+        const kind, var buf = parse.word(line);
+        buf = parse.skip(u8, buf, ' ');
 
         if (std.mem.eql(u8, kind, "v")) {
-            const x = try std.fmt.parseFloat(f32, chunks.next() orelse unreachable);
-            const y = try std.fmt.parseFloat(f32, chunks.next() orelse unreachable);
-            const z = try std.fmt.parseFloat(f32, chunks.next() orelse unreachable);
+            const x, buf = try parse.float(f32, buf);
+            buf = parse.skip(u8, buf, ' ');
+            const y, buf = try parse.float(f32, buf);
+            buf = parse.skip(u8, buf, ' ');
+            const z, buf = try parse.float(f32, buf);
+            try parse.eof(buf);
             try obj.vertices.append(allocator, math.Vector3{ .x = x, .y = y, .z = z });
-        } else if (std.mem.eql(u8, kind, "f")) {}
+        } else if (std.mem.eql(u8, kind, "f")) {
+            const x, buf = try parse.unsigned(u32, buf);
+            buf = parse.skipTo(u8, buf, ' ');
+            buf = parse.skip(u8, buf, ' ');
+            const y, buf = try parse.unsigned(u32, buf);
+            buf = parse.skipTo(u8, buf, ' ');
+            buf = parse.skip(u8, buf, ' ');
+            const z, buf = try parse.unsigned(u32, buf);
+            try obj.faces.append(allocator, math.Vector3u{ .x = x, .y = y, .z = z });
+        }
     }
 
     return obj;
