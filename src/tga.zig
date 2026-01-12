@@ -127,25 +127,46 @@ pub const Image = struct {
         }
     }
 
-    pub fn triangle(self: *@This(), ax0: u16, ay0: u16, bx0: u16, by0: u16, cx0: u16, cy0: u16, color: Color) void {
+    fn round(x: anytype) u16 {
+        return @intFromFloat(@round(x));
+    }
+
+    pub fn triangle(self: *@This(), ax0: f32, ay0: f32, bx0: f32, by0: f32, cx0: f32, cy0: f32, color: Color) void {
         var ax, var ay, var bx, var by, var cx, var cy = .{ ax0, ay0, bx0, by0, cx0, cy0 };
 
         if (ay > by) {
-            std.mem.swap(u16, &ax, &bx);
-            std.mem.swap(u16, &ay, &by);
+            std.mem.swap(f32, &ax, &bx);
+            std.mem.swap(f32, &ay, &by);
         }
         if (by > cy) {
-            std.mem.swap(u16, &bx, &cx);
-            std.mem.swap(u16, &by, &cy);
+            std.mem.swap(f32, &bx, &cx);
+            std.mem.swap(f32, &by, &cy);
         }
         if (ay > by) {
-            std.mem.swap(u16, &ax, &bx);
-            std.mem.swap(u16, &ay, &by);
+            std.mem.swap(f32, &ax, &bx);
+            std.mem.swap(f32, &ay, &by);
         }
 
-        self.line(ax, ay, bx, by, color);
-        self.line(bx, by, cx, cy, color);
-        self.line(cx, cy, ax, ay, color);
+        const m0 = (bx - ax) / (by - ay);
+        const m1 = (cx - ax) / (cy - ay);
+        const m2 = (cx - bx) / (cy - by);
+        var x0 = ax;
+        var x1 = ax;
+        var y = round(ay);
+        while (y < round(by)) : (y += 1) {
+            x0 += m0;
+            x1 += m1;
+            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
+            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
+            @memset(self.pixels()[idx0..idx1], color);
+        }
+        while (y < round(cy)) : (y += 1) {
+            x0 += m2;
+            x1 += m1;
+            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
+            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
+            @memset(self.pixels()[idx0..idx1], color);
+        }
     }
 };
 
