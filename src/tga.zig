@@ -126,6 +126,27 @@ pub const Image = struct {
             y += mf;
         }
     }
+
+    pub fn triangle(self: *@This(), ax0: u16, ay0: u16, bx0: u16, by0: u16, cx0: u16, cy0: u16, color: Color) void {
+        var ax, var ay, var bx, var by, var cx, var cy = .{ ax0, ay0, bx0, by0, cx0, cy0 };
+
+        if (ay > by) {
+            std.mem.swap(u16, &ax, &bx);
+            std.mem.swap(u16, &ay, &by);
+        }
+        if (by > cy) {
+            std.mem.swap(u16, &bx, &cx);
+            std.mem.swap(u16, &by, &cy);
+        }
+        if (ay > by) {
+            std.mem.swap(u16, &ax, &bx);
+            std.mem.swap(u16, &ay, &by);
+        }
+
+        self.line(ax, ay, bx, by, color);
+        self.line(bx, by, cx, cy, color);
+        self.line(cx, cy, ax, ay, color);
+    }
 };
 
 pub fn allocFromFile(allocator: std.mem.Allocator, filename: []const u8) !Image {

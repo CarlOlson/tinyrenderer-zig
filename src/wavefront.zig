@@ -11,6 +11,30 @@ const ArrayList = std.ArrayList;
 const math = @import("./math.zig");
 const parse = @import("./parse.zig");
 
+pub const TriangleIterator = struct {
+    vertices: ArrayList(math.Vector3),
+    faces: ArrayList(math.Vector3u),
+    index: usize,
+
+    pub fn next(self: *@This()) ?math.Matrix3 {
+        if (self.index >= self.faces.items.len) return null;
+
+        const f = self.faces.items[self.index];
+        self.index += 1;
+
+        const a = self.vertices.items[f.x - 1];
+        const b = self.vertices.items[f.y - 1];
+        const c = self.vertices.items[f.z - 1];
+        return .{
+            .value = [_]f32{
+                a.x, a.y, a.z,
+                b.x, b.y, b.z,
+                c.x, c.y, c.z,
+            },
+        };
+    }
+};
+
 pub const Object = struct {
     vertices: ArrayList(math.Vector3),
     faces: ArrayList(math.Vector3u),
@@ -18,6 +42,14 @@ pub const Object = struct {
     pub fn deinit(self: *@This(), allocator: std.mem.Allocator) void {
         self.vertices.deinit(allocator);
         self.faces.deinit(allocator);
+    }
+
+    pub fn faceIterator(self: *@This()) TriangleIterator {
+        return .{
+            .vertices = self.vertices,
+            .faces = self.faces,
+            .index = 0,
+        };
     }
 };
 

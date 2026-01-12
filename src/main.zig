@@ -24,14 +24,10 @@ pub fn main() !void {
 
     framebuffer.clear(Color.Black);
 
-    for (obj.faces.items) |f| {
-        const a = obj.vertices.items[f.x - 1];
-        const b = obj.vertices.items[f.y - 1];
-        const c = obj.vertices.items[f.z - 1];
-
-        framebuffer.line(scale(a.x), scale(a.y), scale(b.x), scale(b.y), Color.Red);
-        framebuffer.line(scale(b.x), scale(b.y), scale(c.x), scale(c.y), Color.Red);
-        framebuffer.line(scale(c.x), scale(c.y), scale(a.x), scale(a.y), Color.Red);
+    var iter = obj.faceIterator();
+    while (iter.next()) |m| {
+        const a, const b, const c = m.points().*;
+        framebuffer.triangle(scale(a.x), scale(a.y), scale(b.x), scale(b.y), scale(c.x), scale(c.y), Color.Red);
     }
 
     try framebuffer.saveToFile("framebuffer.tga");

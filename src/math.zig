@@ -96,4 +96,8 @@ pub const Matrix3 = struct {
             },
         };
     }
+
+    pub fn points(self: *const @This()) *const [3]Vector3 {
+        return @ptrCast(&self.value);
+    }
 };
