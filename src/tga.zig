@@ -164,19 +164,34 @@ pub const Image = struct {
         var x0 = ax;
         var x1 = ax;
         var y = round(ay);
+        var buf = self.pixels();
         while (y < round(by)) : (y += 1) {
             x0 += m0;
             x1 += m1;
-            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
-            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
-            @memset(self.pixels()[idx0..idx1], color);
+            const xl = @min(x0, x1);
+            const xh = @max(x0, x1);
+            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(xl);
+            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(xh);
+            const cl = Color.lerp(buf[idx0], color, 1 - @rem(xl, 1));
+            const ch = Color.lerp(buf[idx1], color, @rem(xh, 1));
+
+            @memset(buf[idx0..idx1], color);
+
+            if (Color.equal(buf[idx0], Color.Transparent)) buf[idx0] = cl;
+            if (Color.equal(buf[idx1], Color.Transparent)) buf[idx1] = ch;
         }
         while (y < round(cy)) : (y += 1) {
             x0 += m2;
             x1 += m1;
-            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
-            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
-            @memset(self.pixels()[idx0..idx1], color);
+            const xl = @min(x0, x1);
+            const xh = @max(x0, x1);
+            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(xl);
+            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(xh);
+            const cl = Color.lerp(buf[idx0], color, 1 - @rem(xl, 1));
+            const ch = Color.lerp(buf[idx1], color, @rem(xh, 1));
+            @memset(buf[idx0..idx1], color);
+            if (Color.equal(buf[idx0], Color.Transparent)) buf[idx0] = cl;
+            if (Color.equal(buf[idx1], Color.Transparent)) buf[idx1] = ch;
         }
     }
 };

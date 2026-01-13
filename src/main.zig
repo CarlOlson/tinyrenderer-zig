@@ -25,8 +25,7 @@ pub fn main() !void {
     framebuffer = try tga.Image.alloc(allocator, size, size);
     defer framebuffer.deinit(allocator);
 
-    framebuffer.clear(Color.Black);
-    framebuffer.checker(32, Color.White);
+    framebuffer.clear(Color.Transparent);
 
     var iter = obj.faceIterator();
     while (iter.next()) |m| {
@@ -34,15 +33,6 @@ pub fn main() !void {
         const color = Color.hsl(rand.float(f32) * 60, ((a.z + b.z + c.z) + 3) / 6, ((a.z + b.z + c.z) + 3) / 6);
         framebuffer.triangle(scale(a.x), scale(a.y), scale(b.x), scale(b.y), scale(c.x), scale(c.y), color);
     }
-
-    // framebuffer = try tga.Image.alloc(allocator, size, size);
-    // defer framebuffer.deinit(allocator);
-
-    // framebuffer.clear(Color.Black);
-
-    // framebuffer.triangle(7, 45, 35, 100, 45, 60, Color.Red);
-    // framebuffer.triangle(120, 35, 90, 5, 45, 110, Color.White);
-    // framebuffer.triangle(115, 83, 80, 90, 85, 120, Color.Green);
 
     try framebuffer.saveToFile("framebuffer.tga");
 }
