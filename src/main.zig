@@ -26,6 +26,7 @@ pub fn main() !void {
     defer framebuffer.deinit(allocator);
 
     framebuffer.clear(Color.Black);
+    framebuffer.checker(32, Color.White);
 
     var iter = obj.faceIterator();
     while (iter.next()) |m| {

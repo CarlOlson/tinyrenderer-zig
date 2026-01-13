@@ -85,6 +85,17 @@ pub const Image = struct {
         @memset(self.pixels(), color);
     }
 
+    pub fn checker(self: *@This(), size: usize, color: Color) void {
+        for (0..self.height) |y| {
+            for (0..self.width) |x| {
+                const ym = (y % (2 * size)) < size;
+                const xm = (x % (2 * size)) < size;
+                if (ym != xm) continue;
+                self.set(@intCast(x), @intCast(y), color);
+            }
+        }
+    }
+
     // TODO track overdraw
     pub fn set(self: *@This(), x: u16, y: u16, color: Color) void {
         // Invert y since we save as top-to-bottom
