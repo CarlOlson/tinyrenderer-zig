@@ -164,19 +164,20 @@ pub const Image = struct {
         var x0 = ax;
         var x1 = ax;
         var y = round(ay);
+        var buf = self.pixels();
         while (y < round(by)) : (y += 1) {
             x0 += m0;
             x1 += m1;
             const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
             const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
-            @memset(self.pixels()[idx0..idx1], color);
+            @memset(buf[idx0..idx1], color);
         }
         while (y < round(cy)) : (y += 1) {
             x0 += m2;
             x1 += m1;
             const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
             const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
-            @memset(self.pixels()[idx0..idx1], color);
+            @memset(buf[idx0..idx1], color);
         }
     }
 };

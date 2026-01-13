@@ -105,7 +105,8 @@ test "benchmark" {
     // try bench.addParam("Line Benchmark 1m", &LineBenchmark.init(250_000), .{});
 
     // This was 1.7ms/200ms (fast/debug) when using `self.set`, and
-    // 1.4ms/19.4ms after switching to `@memset`.
+    // 1.4ms/19.4ms after switching to `@memset`.  1.3ms/16ms after
+    // moving `self.pixel()` out of loop.
     try bench.addParam("Triangle Benchmark 3k", &TriangleBenchmark.init(1000), .{});
 
     try bench.run(bw);
