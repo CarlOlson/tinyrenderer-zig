@@ -32,7 +32,8 @@ pub fn main() !void {
     var iter = obj.faceIterator();
     while (iter.next()) |m| {
         const a, const b, const c = m.points().*;
-        const color = Color.hsl(rand.float(f32) * 60, ((a.z + b.z + c.z) + 3) / 6, ((a.z + b.z + c.z) + 3) / 6);
+        // const color = Color.hsl(rand.float(f32) * 60, ((a.z + b.z + c.z) + 3) / 6, ((a.z + b.z + c.z) + 3) / 6);
+        const color = Color.hsv(rand.float(f32) * 360, ((a.z + b.z + c.z) + 3) / 6, ((a.z + b.z + c.z) + 3) / 6);
         framebuffer.triangleBC(scale(a.x), scale(a.y), scale(b.x), scale(b.y), scale(c.x), scale(c.y), color);
     }
 
@@ -46,4 +47,18 @@ pub fn main() !void {
     // framebuffer.triangle(115, 83, 80, 90, 85, 120, Color.Green);
 
     try framebuffer.saveToFile("framebuffer.tga");
+}
+
+test "Matrix3.points()" {
+    const m = math.Matrix3{
+        .value = [_]f32{
+            1,   2,   3,
+            10,  20,  30,
+            100, 200, 300,
+        },
+    };
+    const a, const b, const c = m.points().*;
+    std.debug.assert(a.equal(&math.Vector3{ .x = 1, .y = 2, .z = 3 }));
+    std.debug.assert(b.equal(&math.Vector3{ .x = 10, .y = 20, .z = 30 }));
+    std.debug.assert(c.equal(&math.Vector3{ .x = 100, .y = 200, .z = 300 }));
 }

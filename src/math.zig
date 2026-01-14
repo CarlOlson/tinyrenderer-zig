@@ -29,6 +29,10 @@ pub const Vector3 = struct {
     y: f32,
     z: f32,
 
+    pub fn equal(self: *const @This(), other: *const @This()) bool {
+        return self.x == other.x and self.y == other.y and self.z == other.z;
+    }
+
     pub fn dot(a: *const @This(), b: *const @This()) f32 {
         return a.x * b.x + a.y * b.y + a.z * b.z;
     }
