@@ -1,8 +1,8 @@
 const std = @import("std");
-const zbench = @import("zbench");
 const tga = @import("./tga.zig");
 const wavefront = @import("./wavefront.zig");
 const Color = @import("./color.zig").Color;
+const math = @import("./math.zig");
 
 const size = 1024;
 var framebuffer: tga.Image = undefined;
@@ -46,69 +46,4 @@ pub fn main() !void {
     // framebuffer.triangle(115, 83, 80, 90, 85, 120, Color.Green);
 
     try framebuffer.saveToFile("framebuffer.tga");
-}
-
-const LineBenchmark = struct {
-    loops: usize,
-
-    fn init(loops: usize) @This() {
-        return .{
-            .loops = loops,
-        };
-    }
-
-    pub fn run(self: *@This(), _: std.mem.Allocator) void {
-        for (0..self.loops) |_| {
-            framebuffer.line(7, 3, 12, 37, Color.Blue);
-            framebuffer.line(62, 63, 12, 37, Color.Green);
-            framebuffer.line(62, 63, 7, 3, Color.Yellow);
-            framebuffer.line(7, 3, 62, 63, Color.Red);
-        }
-    }
-};
-
-const TriangleBenchmark = struct {
-    loops: usize,
-
-    fn init(loops: usize) @This() {
-        return .{
-            .loops = loops,
-        };
-    }
-
-    pub fn run(self: *@This(), _: std.mem.Allocator) void {
-        for (0..self.loops) |_| {
-            framebuffer.triangle(7, 45, 35, 100, 45, 60, Color.Red);
-            framebuffer.triangle(120, 35, 90, 5, 45, 110, Color.White);
-            framebuffer.triangle(115, 83, 80, 90, 85, 120, Color.Green);
-        }
-    }
-};
-
-test "benchmark" {
-    var buf: [1024]u8 = undefined;
-    const bw = std.debug.lockStderrWriter(&buf);
-    defer std.debug.unlockStderrWriter();
-
-    const allocator = std.testing.allocator;
-
-    var bench = zbench.Benchmark.init(allocator, .{});
-    defer bench.deinit();
-
-    framebuffer = try tga.Image.alloc(allocator, 64, 64);
-    defer framebuffer.deinit(allocator);
-    framebuffer.clear(Color.Black);
-
-    // ~9ms debug, ~170us fast
-    try bench.addParam("Line Benchmark 4k", &LineBenchmark.init(1000), .{});
-
-    // ~42ms fast
-    // try bench.addParam("Line Benchmark 1m", &LineBenchmark.init(250_000), .{});
-
-    // This was 1.7ms/200ms (fast/debug) when using `self.set`, and
-    // 1.4ms/19.4ms after switching to `@memset`.  1.3ms/16ms after
-    // moving `self.pixel()` out of loop.
-    try bench.addParam("Triangle Benchmark 3k", &TriangleBenchmark.init(1000), .{});
-
-    try bench.run(bw);
 }

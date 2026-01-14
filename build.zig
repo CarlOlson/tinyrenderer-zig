@@ -14,11 +14,23 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const benchExe = b.addExecutable(.{
+        .name = "tinyrenderer-bench",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/bench.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{},
+        }),
+    });
+
     const opts = .{ .target = target, .optimize = optimize };
     const zbench_module = b.dependency("zbench", opts).module("zbench");
     exe.root_module.addImport("zbench", zbench_module);
+    benchExe.root_module.addImport("zbench", zbench_module);
 
     b.installArtifact(exe);
+    b.installArtifact(benchExe);
 
     const run_step = b.step("run", "Run the app");
     const run_cmd = b.addRunArtifact(exe);
@@ -26,6 +38,14 @@ pub fn build(b: *std.Build) void {
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {
         run_cmd.addArgs(args);
+    }
+
+    const bench_step = b.step("bench", "Benchmark the app");
+    const bench_cmd = b.addRunArtifact(benchExe);
+    bench_step.dependOn(&bench_cmd.step);
+    bench_cmd.step.dependOn(b.getInstallStep());
+    if (b.args) |args| {
+        bench_cmd.addArgs(args);
     }
 
     const exe_tests = b.addTest(.{
