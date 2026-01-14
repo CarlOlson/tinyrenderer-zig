@@ -1,3 +1,5 @@
+const assert = @import("./assert.zig");
+
 pub fn absDistance(a: anytype, b: @TypeOf(a)) @TypeOf(a) {
     return @max(a, b) - @min(a, b);
 }
@@ -99,5 +101,48 @@ pub const Matrix3 = struct {
 
     pub fn points(self: *const @This()) *const [3]Vector3 {
         return @ptrCast(&self.value);
+    }
+};
+
+pub fn signedTriangleArea(ax: f32, ay: f32, bx: f32, by: f32, cx: f32, cy: f32) f32 {
+    return 0.5 * ((by - ay) * (bx + ax) + (cy - by) * (cx + bx) + (ay - cy) * (ax + cx));
+}
+
+pub fn triangleAreaSign(comptime T: type, ax: T, ay: T, bx: T, by: T, cx: T, cy: T) bool {
+    @setFloatMode(.optimized);
+    @setRuntimeSafety(false);
+    const fasterSign = by * ax + cy * bx + ay * cx >= ay * bx + by * cx + cy * ax;
+    return fasterSign;
+}
+
+pub const BCIterator = struct {
+    value: isize,
+    lastRowValue: isize,
+    xincr: isize,
+    yincr: isize,
+
+    pub fn init(ax: usize, ay: usize, bx: usize, by: usize, cx: usize, cy: usize) @This() {
+        @setRuntimeSafety(false);
+        const left: isize = @intCast(by * ax + cy * bx + ay * cx);
+        const right: isize = @intCast(ay * bx + by * cx + cy * ax);
+        return .{
+            .value = left - right,
+            .lastRowValue = left - right,
+            .xincr = @as(isize, @intCast(by)) - @as(isize, @intCast(cy)),
+            .yincr = @as(isize, @intCast(cx)) - @as(isize, @intCast(bx)),
+        };
+    }
+
+    pub fn next(self: *@This()) bool {
+        @setRuntimeSafety(false);
+        const value = self.value >= 0;
+        self.value += self.xincr;
+        return value;
+    }
+
+    pub fn nextRow(self: *@This()) void {
+        @setRuntimeSafety(false);
+        self.lastRowValue += self.yincr;
+        self.value = self.lastRowValue;
     }
 };

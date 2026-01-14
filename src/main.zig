@@ -20,6 +20,7 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     var obj = try wavefront.readFile("./diablo3_pose.obj", allocator);
+    // var obj = try wavefront.readFile("./african_head.obj", allocator);
     defer obj.deinit(allocator);
 
     framebuffer = try tga.Image.alloc(allocator, size, size);
@@ -32,7 +33,7 @@ pub fn main() !void {
     while (iter.next()) |m| {
         const a, const b, const c = m.points().*;
         const color = Color.hsl(rand.float(f32) * 60, ((a.z + b.z + c.z) + 3) / 6, ((a.z + b.z + c.z) + 3) / 6);
-        framebuffer.triangle(scale(a.x), scale(a.y), scale(b.x), scale(b.y), scale(c.x), scale(c.y), color);
+        framebuffer.triangleBC(scale(a.x), scale(a.y), scale(b.x), scale(b.y), scale(c.x), scale(c.y), color);
     }
 
     // framebuffer = try tga.Image.alloc(allocator, size, size);

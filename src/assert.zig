@@ -2,7 +2,14 @@ const std = @import("std");
 
 pub fn equal(a: anytype, b: anytype) void {
     if (a != b) {
-        std.debug.print("{} != {}", .{ a, b });
+        std.debug.print("{} != {}\n", .{ a, b });
+        unreachable;
+    }
+}
+
+pub fn gte(a: anytype, b: anytype) void {
+    if (a < b) {
+        std.debug.print("{} !>= {}\n", .{ a, b });
         unreachable;
     }
 }

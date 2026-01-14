@@ -3,6 +3,8 @@ const assert = @import("./assert.zig");
 const math = @import("./math.zig");
 const Color = @import("./color.zig").Color;
 
+const debug = @import("builtin").mode == .Debug;
+
 pub const Header = packed struct {
     idLength: u8 = 0,
     colorMapType: u8 = 0,
@@ -34,6 +36,7 @@ pub const ImageType = enum(u8) {
     RunLengthEncodedGrayscale = 11,
 };
 
+// TODO track overdraw
 pub const Image = struct {
     width: u16,
     height: u16,
@@ -91,18 +94,22 @@ pub const Image = struct {
                 const ym = (y % (2 * size)) < size;
                 const xm = (x % (2 * size)) < size;
                 if (ym != xm) continue;
-                self.set(@intCast(x), @intCast(y), color);
+                self.set(u16, @intCast(x), @intCast(y), color);
             }
         }
     }
 
-    // TODO track overdraw
-    pub fn set(self: *@This(), x: u16, y: u16, color: Color) void {
+    inline fn setXY(comptime T: type, buffer: []T, x: anytype, y: anytype, width: anytype, height: anytype, value: T) void {
         // Invert y since we save as top-to-bottom
-        self.pixels()[@as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + x] = color;
+        buffer[@as(usize, height - 1 - y) * width + x] = value;
+    }
+
+    pub fn set(self: *@This(), comptime T: type, x: T, y: T, color: Color) void {
+        setXY(Color, self.pixels(), x, y, self.width, self.height, color);
     }
 
     pub fn line(self: *@This(), ax: u16, ay: u16, bx: u16, by: u16, color: Color) void {
+        @setRuntimeSafety(false);
         const steep: bool = math.absDistance(ay, by) > math.absDistance(ax, bx);
 
         var axf = @as(f32, @floatFromInt(ax));
@@ -127,22 +134,83 @@ pub const Image = struct {
         var x: f32 = axf;
         var y: f32 = ayf;
         while (x <= bxf) : (x += 1) {
+            // de-transpose if steep, u16 is about twice as fast as usize
             if (steep) {
-                // de-transpose
-                self.set(@intFromFloat(@round(y)), @intFromFloat(@round(x)), color);
+                self.set(u16, @intFromFloat(@round(y)), @intFromFloat(@round(x)), color);
             } else {
-                self.set(@intFromFloat(@round(x)), @intFromFloat(@round(y)), color);
+                self.set(u16, @intFromFloat(@round(x)), @intFromFloat(@round(y)), color);
             }
 
             y += mf;
         }
     }
 
-    fn round(x: anytype) u16 {
+    fn round(x: anytype) usize {
         return @intFromFloat(@round(x));
     }
 
+    /// Draw a triangle using bounding boxes and barycentric
+    /// coordinates.  This seems to be slower than `triangle` due to
+    /// hard-to-optimize inner loops.
+    pub fn triangleBC(self: *@This(), ax: f32, ay: f32, bx: f32, by: f32, cx: f32, cy: f32, color: Color) void {
+        @setRuntimeSafety(false);
+
+        if (math.signedTriangleArea(ax, ay, bx, by, cx, cy) < 1) return;
+
+        const axi: u32 = @intFromFloat(ax);
+        const ayi: u32 = @intFromFloat(ay);
+        const bxi: u32 = @intFromFloat(bx);
+        const byi: u32 = @intFromFloat(by);
+        const cxi: u32 = @intFromFloat(cx);
+        const cyi: u32 = @intFromFloat(cy);
+
+        const ymin = @min(ayi, byi, cyi);
+        const ymax = @max(ayi, byi, cyi);
+        const xmin = @min(axi, bxi, cxi);
+        const xmax = @max(axi, bxi, cxi);
+
+        const totalAreaSign = math.triangleAreaSign(usize, axi, ayi, bxi, byi, cxi, cyi);
+
+        // It might be slightly faster to merge these to a single
+        // iterator, but the current bottleneck seems to be writing
+        // the pixels.
+        var aIter = math.BCIterator.init(xmin, ymin, bxi, byi, cxi, cyi);
+        var bIter = math.BCIterator.init(xmin, ymin, cxi, cyi, axi, ayi);
+        var gIter = math.BCIterator.init(xmin, ymin, axi, ayi, bxi, byi);
+
+        for (ymin..ymax) |yi| {
+            for (xmin..xmax) |xi| {
+                const alpha = aIter.next() == totalAreaSign;
+                const beta = bIter.next() == totalAreaSign;
+                const gamma = gIter.next() == totalAreaSign;
+
+                if (comptime debug) {
+                    const alpha0 = math.triangleAreaSign(usize, xi, yi, bxi, byi, cxi, cyi) == totalAreaSign;
+                    const beta0 = math.triangleAreaSign(usize, xi, yi, cxi, cyi, axi, ayi) == totalAreaSign;
+                    const gamma0 = math.triangleAreaSign(usize, xi, yi, axi, ayi, bxi, byi) == totalAreaSign;
+                    assert.equal(alpha0, alpha);
+                    assert.equal(beta0, beta);
+                    assert.equal(gamma0, gamma);
+                }
+
+                if (!alpha or !beta or !gamma) continue;
+
+                // For some reason this is faster than operating on chunks with @memset
+                self.set(usize, xi, yi, color);
+            }
+
+            aIter.nextRow();
+            bIter.nextRow();
+            gIter.nextRow();
+        }
+    }
+
+    /// Draw a triangle on the screen.  Fast, but not accurate.
     pub fn triangle(self: *@This(), ax0: f32, ay0: f32, bx0: f32, by0: f32, cx0: f32, cy0: f32, color: Color) void {
+        @setRuntimeSafety(false);
+
+        if (math.signedTriangleArea(ax0, ay0, bx0, by0, cx0, cy0) < 1) return;
+
         var ax, var ay, var bx, var by, var cx, var cy = .{ ax0, ay0, bx0, by0, cx0, cy0 };
 
         if (ay > by) {
@@ -158,25 +226,25 @@ pub const Image = struct {
             std.mem.swap(f32, &ay, &by);
         }
 
-        const m0 = (bx - ax) / (by - ay);
-        const m1 = (cx - ax) / (cy - ay);
-        const m2 = (cx - bx) / (cy - by);
+        const buf = self.pixels();
+        const m0 = if (by == ay) 0 else (bx - ax) / (by - ay);
+        const m1 = if (cy == ay) 0 else (cx - ax) / (cy - ay);
+        const m2 = if (cy == by) 0 else (cx - bx) / (cy - by);
         var x0 = ax;
         var x1 = ax;
         var y = round(ay);
-        var buf = self.pixels();
-        while (y < round(by)) : (y += 1) {
+        while (y <= round(by)) : (y += 1) {
             x0 += m0;
             x1 += m1;
-            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
-            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
+            const idx0 = (self.height - y - 1) * self.width + round(@min(x0, x1));
+            const idx1 = (self.height - y - 1) * self.width + round(@max(x0, x1));
             @memset(buf[idx0..idx1], color);
         }
         while (y < round(cy)) : (y += 1) {
             x0 += m2;
             x1 += m1;
-            const idx0 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@min(x0, x1));
-            const idx1 = @as(usize, self.height - 1 - @min(y, self.height - 1)) * self.width + round(@max(x0, x1));
+            const idx0 = (self.height - y - 1) * self.width + round(@min(x0, x1));
+            const idx1 = (self.height - y - 1) * self.width + round(@max(x0, x1));
             @memset(buf[idx0..idx1], color);
         }
     }
