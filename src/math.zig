@@ -68,6 +68,14 @@ pub const Vector3 = struct {
             .z = a.z * n,
         };
     }
+
+    pub fn scaleToScreenSpace(a: *const @This(), size: anytype) @This() {
+        return .{
+            .x = @round((a.x + 1) * (size - 1) / 2),
+            .y = @round((a.y + 1) * (size - 1) / 2),
+            .z = @round((a.z + 1) * (size - 1) / 2),
+        };
+    }
 };
 
 pub const Matrix3 = struct {
