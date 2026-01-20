@@ -227,25 +227,26 @@ pub const Image = struct {
         }
 
         const buf = self.pixels();
-        const m0 = if (by == ay) 0 else (bx - ax) / (by - ay);
-        const m1 = if (cy == ay) 0 else (cx - ax) / (cy - ay);
-        const m2 = if (cy == by) 0 else (cx - bx) / (cy - by);
-        var x0 = ax;
-        var x1 = ax;
+        const mAB = if (by == ay) 0 else (bx - ax) / (by - ay);
+        const mAC = if (cy == ay) 0 else (cx - ax) / (cy - ay);
+        const mBC = if (cy == by) 0 else (cx - bx) / (cy - by);
+        var xAB = ax;
+        var xAC = ax;
+        var xBC = bx;
         var y = round(ay);
-        while (y <= round(by)) : (y += 1) {
-            x0 += m0;
-            x1 += m1;
-            const idx0 = (self.height - y - 1) * self.width + round(@min(x0, x1));
-            const idx1 = (self.height - y - 1) * self.width + round(@max(x0, x1));
+        while (y < round(by)) : (y += 1) {
+            const idx0 = (self.height - y - 1) * self.width + round(@min(xAB, xAC));
+            const idx1 = (self.height - y - 1) * self.width + round(@max(xAB, xAC));
             @memset(buf[idx0..idx1], color);
+            xAB += mAB;
+            xAC += mAC;
         }
-        while (y < round(cy)) : (y += 1) {
-            x0 += m2;
-            x1 += m1;
-            const idx0 = (self.height - y - 1) * self.width + round(@min(x0, x1));
-            const idx1 = (self.height - y - 1) * self.width + round(@max(x0, x1));
+        while (y <= round(cy)) : (y += 1) {
+            const idx0 = (self.height - y - 1) * self.width + round(@min(xAC, xBC));
+            const idx1 = (self.height - y - 1) * self.width + round(@max(xAC, xBC));
             @memset(buf[idx0..idx1], color);
+            xAC += mAC;
+            xBC += mBC;
         }
     }
 };
